@@ -3,6 +3,11 @@ uuid = "f5c2d71c-83f8-4255-b29d-cee59dfde9e8"
 authors = ["William Pope"]
 version = "0.1.0"
 
+[deps]
+GridInterpolations = "bb4c363b-b914-514b-8517-4eb369bc008a"
+LazySets = "b4f0291d-fe17-52bc-9479-3d1a343d9043"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
 [compat]
 julia = "1"
 
