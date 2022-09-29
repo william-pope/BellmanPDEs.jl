@@ -9,6 +9,7 @@ LazySets = "b4f0291d-fe17-52bc-9479-3d1a343d9043"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [compat]
+LazySets = "2"
 julia = "1"
 
 [extras]
