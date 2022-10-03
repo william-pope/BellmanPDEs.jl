@@ -9,21 +9,22 @@ function runge_kutta_4(x_k, u_k, dt::Float64, EoM, veh, sg)
 
     x_k1 = x_k + (1/6)*dt*(w1 + 2*w2 + 2*w3 + w4)
 
-    x_k1 = mod_state_angle(x_k1, sg)
+    x_k1_m = map(mod_angle, x_k1, sg.angle_wrap_array) 
 
-    return x_k1
+    return x_k1_m
 end
 
-# adjust angles within [-pi,pi] bounds
-function mod_state_angle(x, sg)
-    for d in eachindex(x)
-        if sg.angle_wrap_array[d] == true
-            x[d] = x[d] % (2*pi)
-            x[d] > pi ? x[d] -= 2*pi : x[d] -= 0
+function mod_angle(x::Float64, wrap::Bool)
+    if wrap == true
+        xm = x % (2*pi)
+        if xm > pi
+            xm -= 2*pi
         end
+    else
+        xm = x
     end
 
-    return x
+    return xm
 end
 
 function interp_value(x, value_array, sg)

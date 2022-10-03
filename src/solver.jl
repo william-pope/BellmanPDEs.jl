@@ -29,9 +29,6 @@ function solve_HJB_PDE(env, veh, EoM, sg, ag, dt_solve, Dv_tol, max_solve_steps)
                 end
             end
         end
-        
-        # TO-DO: see if this is needed for angle wrap
-        # value_array[:,:,end] = value_array[:,:,1]
 
         println("step: ", solve_step, ", Dv_max = ", Dv_max) #, "Dv_max = ", Dv_max)
 
@@ -47,8 +44,6 @@ function solve_HJB_PDE(env, veh, EoM, sg, ag, dt_solve, Dv_tol, max_solve_steps)
     return value_array, opt_ia_array, set_array
 end
 
-# TO-DO: may need to do collision checking along propagation subpath
-# ISSUE: value array behaves strangely when dt is small (~<= 0.1) (seems unexpected)
 function update_node_value(x, value_array, dt_solve, EoM, env, veh, sg, ag) 
     qval_min = Inf
     ia_opt_ijk = 1
@@ -58,8 +53,8 @@ function update_node_value(x, value_array, dt_solve, EoM, env, veh, sg, ag)
 
         cost_p = get_cost(x, a, dt_solve)
 
-        x_p = runge_kutta_4(x, a, dt_solve, EoM, veh, sg)       # SPEED
-        val_p = interp_value(x_p, value_array, sg)              # SPEED
+        x_p = runge_kutta_4(x, a, dt_solve, EoM, veh, sg)
+        val_p = interp_value(x_p, value_array, sg)
 
         qval_a = cost_p + val_p
 

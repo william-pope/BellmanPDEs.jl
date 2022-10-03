@@ -1,5 +1,6 @@
 module BellmanPDEs
 
+using StaticArrays
 using GridInterpolations
 using LazySets
 using Random

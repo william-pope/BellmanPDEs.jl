@@ -11,10 +11,9 @@ function plan_HJB_path(x_0, dt_plan, value_array, opt_ia_array, max_steps, EoM, 
     while in_target_set(x_k, env, veh) == false && step < max_steps
         # calculate optimal action
         u_k = fast_policy(x_k, dt_plan, value_array, opt_ia_array, EoM, veh, sg, ag)
-        # u_k = HJB_policy(x_k, dt_plan, value_array, EoM, veh, sg, ag)
 
         # simulate forward one time step
-        x_k1 = runge_kutta_4(x_k, u_k, dt_plan, EoM, veh, sg)    # TO-DO: needs K_sub for collision checking
+        x_k1 = runge_kutta_4(x_k, u_k, dt_plan, EoM, veh, sg)
         
         # store state and action at current time step
         push!(x_path, x_k)
@@ -50,32 +49,33 @@ end
 
 # use stored action grid to efficiently find near-optimal action at current state
 function fast_policy(x_k, dt_plan, value_array, opt_ia_array, EoM, veh, sg, ag)
-    # building fast action list
-    index, weight = interpolants(sg.state_grid, x_k)
-    ia_complete = collect(1:length(ag.action_grid))
-    ia_neighbor_srt_unq = unique(opt_ia_array[index[sortperm(weight, rev=true)]])
-    ia_leftover_shuf_unq = shuffle(setdiff(ia_complete, opt_ia_array[index]))
-    ia_fast_list = vcat(ia_neighbor_srt_unq, ia_leftover_shuf_unq)
+    # gets actions from neighboring nodes
+    nbr_indices, nbr_weights = interpolants(sg.state_grid, x_k)
+    coord_srt = sortperm(nbr_weights, rev=true)
+    nbr_indices_srt = view(nbr_indices, coord_srt)
+    ia_neighbor_srt_unq = opt_ia_array[nbr_indices]
+    unique!(ia_neighbor_srt_unq)                            
 
-    # assessing optimality
+    # assesses optimality
     value_k = interp_value(x_k, value_array, sg)
     epsilon = 0.75 * dt_plan
 
+    ia_min = 1
     value_k1_min = Inf
-    ia_min = ag.action_grid[1]
-
-    for ia in ia_fast_list
+    
+    # checks neighbors first
+    for ia in ia_neighbor_srt_unq
         if ia == 0
             continue
         end
 
         # simulates action one step forward
-        x_k1 = runge_kutta_4(x_k, ag.action_grid[ia], dt_plan, EoM, veh, sg)
+        x_k1 = runge_kutta_4(x_k, ag.action_list_static[ia], dt_plan, EoM, veh, sg)
         value_k1 = interp_value(x_k1, value_array, sg)
 
         # checks if tested action passes near-optimal threshold
         if value_k1 < (value_k - epsilon)
-            return ag.action_grid[ia]
+            return ag.action_list_static[ia]
         end
 
         # otherwise, stores best action found so far
@@ -85,5 +85,30 @@ function fast_policy(x_k, dt_plan, value_array, opt_ia_array, EoM, veh, sg, ag)
         end
     end
 
-    return ag.action_grid[ia_min]
+    # if optimal threshold hasn't been met (return), continues to check rest of actions
+    ia_complete = collect(1:length(ag.action_grid))
+    ia_leftover_shuf_unq = shuffle(setdiff(ia_complete, opt_ia_array[nbr_indices]))
+
+    for ia in ia_leftover_shuf_unq
+        if ia == 0
+            continue
+        end
+        
+        # simulates action one step forward
+        x_k1 = runge_kutta_4(x_k, ag.action_list_static[ia], dt_plan, EoM, veh, sg)
+        value_k1 = interp_value(x_k1, value_array, sg)
+
+        # checks if tested action passes near-optimal threshold
+        if value_k1 < (value_k - epsilon)
+            return ag.action_list_static[ia]
+        end
+
+        # otherwise, stores best action found so far
+        if value_k1 < value_k1_min
+            value_k1_min = value_k1
+            ia_min = ia
+        end
+    end
+    
+    return ag.action_list_static[ia_min]
 end

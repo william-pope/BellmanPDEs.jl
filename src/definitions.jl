@@ -7,20 +7,22 @@ struct Environment
 end
 
 struct Vehicle
-    wheelbase::Float64              # wheelbase [m]
-    body_dims::Array{Float64}       # [length, width] [m]
-    origin_to_cent::Array{Float64}  # [x, y] [m]
+    wheelbase::Float64
+    body_dims::Array{Float64}
+    origin_to_cent::Array{Float64}
     origin_body::VPolygon
 end
 
 struct StateGrid
     state_grid::RectangleGrid
+    state_list_static::Array{Any}
     angle_wrap_array::Array{Bool}
     ind_gs_array::Array
 end
 
 struct ActionGrid
     action_grid::RectangleGrid
+    action_list_static::Array{Any}
 end
 
 # defines environment geoemtry
@@ -45,6 +47,11 @@ end
 function define_state_grid(state_space, dx_sizes, angle_wrap)
     state_iters = [minimum(axis):dx_sizes[i]:maximum(axis) for (i, axis) in enumerate(state_space)]
     state_grid = RectangleGrid(state_iters...)
+
+    state_list_static = []
+    for state in state_grid
+        push!(state_list_static, SA[state...])
+    end
 
     # Gauss-Seidel sweeping scheme
     gs_iters = [[0,1] for axis in state_space]
@@ -73,7 +80,7 @@ function define_state_grid(state_space, dx_sizes, angle_wrap)
         push!(ind_gs_array, ind_list)
     end
 
-    sg = StateGrid(state_grid, angle_wrap, ind_gs_array)
+    sg = StateGrid(state_grid, state_list_static, angle_wrap, ind_gs_array)
     return sg
 end
 
@@ -82,6 +89,11 @@ function define_action_grid(action_space, du_num_steps)
     action_iters = [range(minimum(axis), maximum(axis), du_num_steps[i]) for (i, axis) in enumerate(action_space)]
     action_grid = RectangleGrid(action_iters...)
 
-    ag = ActionGrid(action_grid)
+    action_list_static = []
+    for action in action_grid
+        push!(action_list_static, SA[action...])
+    end
+
+    ag = ActionGrid(action_grid, action_list_static)
     return ag
 end
