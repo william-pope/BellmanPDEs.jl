@@ -13,10 +13,10 @@ function solve_HJB_PDE(env, veh, EoM, sg, ag, dt_solve, Dv_tol, max_solve_steps)
     while Dv_max > Dv_tol && solve_step <= max_solve_steps
         Dv_max = 0.0
         for ind_m in sg.ind_gs_array[gs_step]
-            x = sg.state_grid[ind_m...]
             ind_s = multi2single_ind(ind_m, sg)
 
             if set_array[ind_s] == 2
+                x = sg.state_list_static[ind_s]
                 v_kn1 = value_array[ind_s]
                 
                 value_array[ind_s], opt_ia_array[ind_s] = update_node_value(x, value_array, dt_solve, EoM, env, veh, sg, ag)
@@ -29,8 +29,6 @@ function solve_HJB_PDE(env, veh, EoM, sg, ag, dt_solve, Dv_tol, max_solve_steps)
                 end
             end
         end
-
-        println("step: ", solve_step, ", Dv_max = ", Dv_max) #, "Dv_max = ", Dv_max)
 
         if gs_step == 2^dimensions(sg.state_grid)
             gs_step = 1
@@ -49,7 +47,7 @@ function update_node_value(x, value_array, dt_solve, EoM, env, veh, sg, ag)
     ia_opt_ijk = 1
 
     for ia in 1:length(ag.action_grid)
-        a = ag.action_grid[ia]
+        a = ag.action_list_static[ia]
 
         cost_p = get_cost(x, a, dt_solve)
 
@@ -83,8 +81,8 @@ function initialize_value_array(sg, env, veh)
     set_array = zeros(Int, length(sg.state_grid))
 
     for ind_m in sg.ind_gs_array[1]
-        x = sg.state_grid[ind_m...]
         ind_s = multi2single_ind(ind_m, sg)
+        x = sg.state_list_static[ind_s]
 
         if in_workspace(x, env, veh) == false || in_obstacle_set(x, env, veh) == true
             value_array[ind_s] = 1e5
