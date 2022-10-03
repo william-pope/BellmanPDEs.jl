@@ -101,7 +101,7 @@ function state_to_body(x, veh)
 end
 
 # used to create circles as polygons in LazySets.jl
-function circle2vpolygon(cent_cir, r_cir)
+function VPolyCircle(cent_cir, r_cir)
     # number of points used to discretize edge of circle
     pts = 12
 
