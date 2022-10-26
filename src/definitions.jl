@@ -2,12 +2,12 @@
 
 struct Environment
     workspace::VPolygon
-    obstacle_list::Array{Any}
+    obstacle_list::Array{VPolygon}
     goal::VPolygon
 end
 
-struct Vehicle
-    wheelbase::Float64
+struct VehicleBody
+    l::Float64
     body_dims::Array{Float64}
     origin_to_cent::Array{Float64}
     origin_body::VPolygon
@@ -18,11 +18,6 @@ struct StateGrid
     state_list_static::Array{Any}
     angle_wrap_array::Array{Bool}
     ind_gs_array::Array
-end
-
-struct ActionGrid
-    action_grid::RectangleGrid
-    action_list_static::Array{Any}
 end
 
 # defines environment geoemtry
@@ -39,7 +34,7 @@ function define_vehicle(wheelbase, body_dims, origin_to_cent)
     y0_max = origin_to_cent[2] + 1/2*body_dims[2]
     origin_body = VPolygon([[x0_min, y0_min], [x0_max, y0_min], [x0_max, y0_max], [x0_min, y0_max]])
 
-    veh = Vehicle(wheelbase, body_dims, origin_to_cent, origin_body)
+    veh = VehicleBody(wheelbase, body_dims, origin_to_cent, origin_body)
     return veh
 end
 
@@ -82,18 +77,4 @@ function define_state_grid(state_space, dx_sizes, angle_wrap)
 
     sg = StateGrid(state_grid, state_list_static, angle_wrap, ind_gs_array)
     return sg
-end
-
-# discretizes action space
-function define_action_grid(action_space, du_num_steps)
-    action_iters = [range(minimum(axis), maximum(axis), du_num_steps[i]) for (i, axis) in enumerate(action_space)]
-    action_grid = RectangleGrid(action_iters...)
-
-    action_list_static = []
-    for action in action_grid
-        push!(action_list_static, SA[action...])
-    end
-
-    ag = ActionGrid(action_grid, action_list_static)
-    return ag
 end

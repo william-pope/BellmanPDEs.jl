@@ -1,83 +1,78 @@
 # solver.jl
 
 # main function to iteratively calculate HJB value function
-function solve_HJB_PDE(env, veh, EoM, sg, ag, dt_solve, Dv_tol, max_solve_steps)
+function solve_HJB_PDE(get_actions::Function, get_cost::Function, Dt, env, veh, sg, Dval_tol, max_solve_steps)
     # initialize data arrays
-    value_array, opt_ia_array, set_array = initialize_value_array(sg, env, veh)
+    value_array, a_ind_opt_array, set_array = initialize_value_array(sg, env, veh)
+
+    num_gs_sweeps = 2^dimensions(sg.state_grid)
 
     # main function loop
-    Dv_max = Inf
-    solve_step = 1
     gs_step = 1
 
-    while Dv_max > Dv_tol && solve_step <= max_solve_steps
-        Dv_max = 0.0
+    for solve_step in 1:max_solve_steps
+        Dval_max = 0.0
+
         for ind_m in sg.ind_gs_array[gs_step]
             ind_s = multi2single_ind(ind_m, sg)
 
+            # if the node is in free space, update its value
             if set_array[ind_s] == 2
                 x = sg.state_list_static[ind_s]
+                
+                # store previous value
                 v_kn1 = value_array[ind_s]
                 
-                value_array[ind_s], opt_ia_array[ind_s] = update_node_value(x, value_array, dt_solve, EoM, env, veh, sg, ag)
+                # calculate new value
+                value_array[ind_s], a_ind_opt_array[ind_s] = update_node_value(x, get_actions, get_cost, Dt, value_array, env, veh, sg)
                 
+                # compare old and new values, update largest change in value
                 v_k = value_array[ind_s]
-                Dv = abs(v_k - v_kn1)
+                Dval = abs(v_k - v_kn1)
 
-                if Dv > Dv_max
-                    Dv_max = Dv
+                if Dval > 1e5
+                    println(Dval)
+                end
+
+                if Dval > Dval_max
+                    Dval_max = Dval
                 end
             end
         end
 
-        if gs_step == 2^dimensions(sg.state_grid)
+        println("solve_step: ", solve_step, ", gs_step: ", gs_step, ", Dval_max = ", Dval_max)
+
+        # check if termination condition met
+        if Dval_max <= Dval_tol
+            break
+        end
+
+        # update Gauss-Seidel counter
+        if gs_step == num_gs_sweeps
             gs_step = 1
         else
             gs_step += 1
         end
-
-        solve_step += 1
     end
 
-    return value_array, opt_ia_array, set_array
+    return value_array, a_ind_opt_array, set_array
 end
 
-function update_node_value(x, value_array, dt_solve, EoM, env, veh, sg, ag) 
-    qval_min = Inf
-    ia_opt_ijk = 1
+function update_node_value(x, get_actions::Function, get_cost::Function, Dt, value_array, env, veh, sg) 
+    # using entire action set
+    ro_actions = get_actions(x, Dt, veh)
+    a_ind_array = collect(1:length(ro_actions))
 
-    for ia in 1:length(ag.action_grid)
-        a = ag.action_list_static[ia]
-
-        cost_p = get_cost(x, a, dt_solve)
-
-        x_p = runge_kutta_4(x, a, dt_solve, EoM, veh, sg)
-        val_p = interp_value(x_p, value_array, sg)
-
-        qval_a = cost_p + val_p
-
-        if qval_a < qval_min
-            qval_min = qval_a
-            ia_opt_ijk = ia
-        end
-    end
-
-    val_ijk = qval_min
+    # find optimal action and value at state
+    a_ind_opt, val_x = optimize_action(x, a_ind_array, ro_actions, get_cost::Function, Dt, value_array, veh, sg)
    
-    return val_ijk, ia_opt_ijk
-end
-
-# (?): should this be moved out into definitions?
-function get_cost(x_k, a_k, dt_solve)
-    cost_k = dt_solve
-
-    return cost_k
+    return val_x, a_ind_opt
 end
 
 # initialize arrays
 function initialize_value_array(sg, env, veh)
     value_array = zeros(Float64, length(sg.state_grid))
-    opt_ia_array = zeros(Int, length(sg.state_grid))
+    a_ind_opt = zeros(Int, length(sg.state_grid))
     set_array = zeros(Int, length(sg.state_grid))
 
     for ind_m in sg.ind_gs_array[1]
@@ -98,5 +93,5 @@ function initialize_value_array(sg, env, veh)
         end
     end
 
-    return value_array, opt_ia_array, set_array
+    return value_array, a_ind_opt, set_array
 end

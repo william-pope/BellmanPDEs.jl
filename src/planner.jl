@@ -1,114 +1,74 @@
 # planner.jl
 
 # main function to generate a path from an initial state to goal
-function plan_HJB_path(x_0, dt_plan, value_array, opt_ia_array, max_steps, EoM, env, veh, sg, ag)
-    x_k = x_0
+function plan_HJB_path(x_0, get_actions::Function, Dt, value_array, a_ind_opt_array, env, veh, sg, max_plan_steps)
+    x_path = []
+    x_subpath = []  
+    a_path = []
 
-    x_path = []  
-    u_path = []
+    x_k = x_0
+    push!(x_path, x_k)
+    push!(x_subpath, x_k)
    
     step = 1
-    while in_target_set(x_k, env, veh) == false && step < max_steps
+    for step in 1:max_plan_steps
         # calculate optimal action
-        u_k = fast_policy(x_k, dt_plan, value_array, opt_ia_array, EoM, veh, sg, ag)
+        a_k = HJB_policy(x_k, Dt, value_array, veh, sg, get_actions::Function)
 
         # simulate forward one time step
-        x_k1 = runge_kutta_4(x_k, u_k, dt_plan, EoM, veh, sg)
+        x_k1, _ = propagate_state(x_k, a_k, Dt, veh)
         
         # store state and action at current time step
-        push!(x_path, x_k)
-        push!(u_path, u_k)
+        push!(x_path, x_k1)
+        for x_kk in x_k1_subpath
+            push!(x_subpath, x_kk)
+        end
+        push!(a_path, a_k)
+
+        # check if termination condition met
+        if in_target_set(x_k, env, veh) == true
+            break
+        end
         
         # pass state forward to next step
         x_k = deepcopy(x_k1)
-        step += 1
     end
-    
-    push!(x_path, x_k)
 
     return x_path, u_path, step
 end
 
-# calculate one-step lookahead search at current state
-function HJB_policy(x_k, dt_plan, value_array, EoM, veh, sg, ag)
-    value_k1_min = Inf
-    a_k_opt = ag.action_grid[1]
+function HJB_policy(x_k, Dt, value_array, veh, sg, get_actions::Function)
+    ro_actions = get_actions(x_k, Dt, veh)
 
-    for a_k in ag.action_grid
-        x_k1 = runge_kutta_4(x_k, a_k, dt_plan, EoM, veh, sg)
-        value_k1 = interp_value(x_k1, value_array, sg)
+    a_ind_array = collect(1:length(ro_actions))
+    a_ind_opt, _ = optimize_action(x_k, a_ind_array, ro_actions, value_array, Dt, veh, sg)
 
-        if value_k1 < value_k1_min
-            value_k1_min = value_k1
-            a_k_opt = a_k
-        end
-    end
+    a_k_opt = ro_actions[a_ind_opt]
 
     return a_k_opt
 end
 
-# use stored action grid to efficiently find near-optimal action at current state
-function fast_policy(x_k, dt_plan, value_array, opt_ia_array, EoM, veh, sg, ag)
-    # gets actions from neighboring nodes
-    nbr_indices, nbr_weights = interpolants(sg.state_grid, x_k)
-    coord_srt = sortperm(nbr_weights, rev=true)
-    nbr_indices_srt = view(nbr_indices, coord_srt)
-    ia_neighbor_srt_unq = opt_ia_array[nbr_indices]
-    unique!(ia_neighbor_srt_unq)                            
+function rollout_policy(x_k, Dv_RC, Dt, value_array, veh, sg, get_actions::Function)    
+    # get actions for current state
+    ro_actions = get_actions(x_k, Dt, veh)
 
-    # assesses optimality
-    value_k = interp_value(x_k, value_array, sg)
-    epsilon = 0.75 * dt_plan
+    # 1) find best phi for Dv given by reactive controller ---
+    a_ind_array_RC = findall(Dv -> Dv == Dv_RC, getindex.(ro_actions, 2))
+    a_ind_best_RC, val_best_RC = optimize_action(x_k, a_ind_array_RC, ro_actions, value_array, Dt, veh, sg)
 
-    ia_min = 1
-    value_k1_min = Inf
-    
-    # checks neighbors first
-    for ia in ia_neighbor_srt_unq
-        if ia == 0
-            continue
-        end
-
-        # simulates action one step forward
-        x_k1 = runge_kutta_4(x_k, ag.action_list_static[ia], dt_plan, EoM, veh, sg)
-        value_k1 = interp_value(x_k1, value_array, sg)
-
-        # checks if tested action passes near-optimal threshold
-        if value_k1 < (value_k - epsilon)
-            return ag.action_list_static[ia]
-        end
-
-        # otherwise, stores best action found so far
-        if value_k1 < value_k1_min
-            value_k1_min = value_k1
-            ia_min = ia
-        end
+    # 2) check if [Dv_RC, phi_best_RC] is a valid action in static environment ---
+    infty_set_lim = 50.0
+    if val_best_RC <= infty_set_lim
+        a_ro = ro_actions[a_ind_best_RC]
+ 
+        return a_ro
     end
 
-    # if optimal threshold hasn't been met (return), continues to check rest of actions
-    ia_complete = collect(1:length(ag.action_grid))
-    ia_leftover_shuf_unq = shuffle(setdiff(ia_complete, opt_ia_array[nbr_indices]))
+    # 3) if RC requested Dv is not valid, then find pure HJB best action ---
+    a_ind_array_no_RC = findall(Dv -> Dv != Dv_RC, getindex.(ro_actions, 2))
+    a_ind_best_HJB, val_best_HJB = optimize_action(x_k, a_ind_array_no_RC, ro_actions, value_array, Dt, veh, sg)
 
-    for ia in ia_leftover_shuf_unq
-        if ia == 0
-            continue
-        end
-        
-        # simulates action one step forward
-        x_k1 = runge_kutta_4(x_k, ag.action_list_static[ia], dt_plan, EoM, veh, sg)
-        value_k1 = interp_value(x_k1, value_array, sg)
+    a_ro = ro_actions[a_ind_best_HJB]
 
-        # checks if tested action passes near-optimal threshold
-        if value_k1 < (value_k - epsilon)
-            return ag.action_list_static[ia]
-        end
-
-        # otherwise, stores best action found so far
-        if value_k1 < value_k1_min
-            value_k1_min = value_k1
-            ia_min = ia
-        end
-    end
-    
-    return ag.action_list_static[ia_min]
+    return a_ro
 end
