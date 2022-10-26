@@ -34,7 +34,7 @@ function define_vehicle(wheelbase, body_dims, origin_to_cent)
     y0_max = origin_to_cent[2] + 1/2*body_dims[2]
     origin_body = VPolygon([[x0_min, y0_min], [x0_max, y0_min], [x0_max, y0_max], [x0_min, y0_max]])
 
-    veh = VehicleBody(wheelbase, body_dims, origin_to_cent, origin_body)
+    veh = VehicleBodyBody(wheelbase, body_dims, origin_to_cent, origin_body)
     return veh
 end
 

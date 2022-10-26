@@ -121,14 +121,14 @@ function in_workspace(x, env, veh)
     if issubset(veh_body, env.workspace)
         return true
     end
-        
+
     return false
 end
 
 # obstacle set checker
 function in_obstacle_set(x, env, veh)
     veh_body = state_to_body(x, veh)
-    
+
     for obstacle in env.obstacle_list
         if isempty(intersection(veh_body, obstacle)) == false
             return true
@@ -173,8 +173,8 @@ function VPolyCircle(cent_cir, r_cir)
     theta_rng = range(0, 2*pi, length=pts+1)
 
     cir_vertices = [[cent_cir[1] + r_poly*cos(theta), cent_cir[2] + r_poly*sin(theta)] for theta in theta_rng]
-    
+
     poly_cir = VPolygon(cir_vertices)
-    
+
     return poly_cir
 end
