@@ -1,7 +1,7 @@
 # utils.jl
 
 # 4th-order Runge-Kutta integration scheme
-function runge_kutta_4(x_k, u_k, dt::Float64, EoM, veh, sg)    
+function runge_kutta_4(x_k, u_k, dt::Float64, EoM, veh, sg)
     w1 = EoM(x_k, u_k, veh)
     w2 = EoM(x_k + w1*dt/2, u_k, veh)
     w3 = EoM(x_k + w2*dt/2, u_k, veh)
@@ -9,7 +9,7 @@ function runge_kutta_4(x_k, u_k, dt::Float64, EoM, veh, sg)
 
     x_k1 = x_k + (1/6)*dt*(w1 + 2*w2 + 2*w3 + w4)
 
-    x_k1_m = map(mod_angle, x_k1, sg.angle_wrap_array) 
+    x_k1_m = map(mod_angle, x_k1, sg.angle_wrap_array)
 
     return x_k1_m
 end
@@ -59,14 +59,14 @@ function in_workspace(x, env, veh)
     if issubset(veh_body, env.workspace)
         return true
     end
-        
+
     return false
 end
 
 # obstacle set checker
 function in_obstacle_set(x, env, veh)
     veh_body = state_to_body(x, veh)
-    
+
     for obstacle in env.obstacle_list
         if isempty(intersection(veh_body, obstacle)) == false
             return true
@@ -77,7 +77,7 @@ function in_obstacle_set(x, env, veh)
 end
 
 # target set checker
-function in_target_set(x, env::Environment, veh::Vehicle)
+function in_target_set(x, env::Environment, veh::VehicleBody)
     veh_body = state_to_body(x, veh)
 
     if issubset(veh_body, env.goal)
@@ -111,8 +111,8 @@ function VPolyCircle(cent_cir, r_cir)
     theta_rng = range(0, 2*pi, length=pts+1)
 
     cir_vertices = [[cent_cir[1] + r_poly*cos(theta), cent_cir[2] + r_poly*sin(theta)] for theta in theta_rng]
-    
+
     poly_cir = VPolygon(cir_vertices)
-    
+
     return poly_cir
 end
