@@ -10,7 +10,7 @@ function optimize_action(x, a_ind_array, actions, get_cost::Function, Dt, value_
         cost_x_a = get_cost(x, a, Dt)
 
         x_p, _ = propagate_state(x, a, Dt, veh)
-        val_xp = interp_state_value(x_p, value_array, sg)
+        val_xp = interp_value(x_p, value_array, sg)
 
         qval_x_a = cost_x_a + val_xp
 
@@ -24,17 +24,17 @@ function optimize_action(x, a_ind_array, actions, get_cost::Function, Dt, value_
 end
 
 function propagate_state(x_k, a_k, Dt, veh)
-    # define number of substeps used in integration
+    # define number of substeps used for integration
     substeps = 4
-
-    x_k1_subpath = Array{Array{Float64, 1}, 1}(undef, substeps)
     Dt_sub = Dt / substeps
+
+    x_k1_subpath = MVector{substeps, SVector{4, Float64}}(undef)
 
     # step through substeps from x_k
     x_kk = x_k
     for kk in 1:substeps
         # Dv applied on first substep only
-        kk == 1 ? a_kk = a_k : a_kk = [a_k[1], 0.0]
+        kk == 1 ? a_kk = a_k : a_kk = SVector{2, Float64}(a_k[1], 0.0)
             
         # propagate for Dt_sub
         x_kk1 = discrete_time_EoM(x_kk, a_kk, Dt_sub, veh)
@@ -46,7 +46,7 @@ function propagate_state(x_k, a_k, Dt, veh)
         x_kk = x_kk1
     end
 
-    x_k1 = x_k1_subpath[end]
+    x_k1 = x_kk
 
     return x_k1, x_k1_subpath
 end
@@ -82,12 +82,12 @@ function discrete_time_EoM(x_k, a_k, Dt, veh)
     end
 
     # reassemble state vector
-    x_k1 = SA[xp_k1, yp_k1, theta_k1, v_k1]
+    x_k1 = SVector{4, Float64}(xp_k1, yp_k1, theta_k1, v_k1)
 
     return x_k1
 end
 
-function interp_state_value(x, value_array, sg)
+function interp_value(x, value_array, sg)
     # check if current state is within state space
     for d in eachindex(x)
         if x[d] < sg.state_grid.cutPoints[d][1] || x[d] > sg.state_grid.cutPoints[d][end]

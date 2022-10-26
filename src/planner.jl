@@ -38,7 +38,7 @@ end
 
 function HJB_policy(x_k, get_actions::Function, get_cost::Function, Dt, value_array, veh, sg)
     ro_actions = get_actions(x_k, Dt, veh)
-    a_ind_array = collect(1:length(ro_actions))
+    a_ind_array = collect(1:length(ro_actions))     # SPEED: should be a faster way to do this
 
     a_ind_opt, _ = optimize_action(x_k, a_ind_array, ro_actions, get_cost, Dt, value_array, veh, sg)
 
@@ -52,7 +52,7 @@ function rollout_policy(x_k, Dv_RC, get_actions::Function, get_cost::Function, D
     ro_actions = get_actions(x_k, Dt, veh)
 
     # 1) find best phi for Dv given by reactive controller ---
-    a_ind_array_RC = findall(Dv -> Dv == Dv_RC, getindex.(ro_actions, 2))
+    a_ind_array_RC = findall(Dv -> Dv == Dv_RC, getindex.(ro_actions, 2))   # SPEED: might be a faster way to do this
     a_ind_best_RC, val_best_RC = optimize_action(x_k, a_ind_array_RC, ro_actions, get_cost, Dt, value_array, veh, sg)
 
     # 2) check if [Dv_RC, phi_best_RC] is a valid action in static environment ---

@@ -14,17 +14,17 @@ function solve_HJB_PDE(get_actions::Function, get_cost::Function, Dt, env, veh, 
         Dval_max = 0.0
 
         for ind_m in sg.ind_gs_array[gs_step]
-            ind_s = multi2single_ind(ind_m, sg)
+            ind_s = multi2single_ind(ind_m, sg)     # SPEED: able to speed up? haven't looked
 
             # if the node is in free space, update its value
             if set_array[ind_s] == 2
-                x = sg.state_list_static[ind_s]
+                x = sg.state_list_static[ind_s]     # SPEED: list might be better as an MVector (actually big vector, so actually not?)
                 
                 # store previous value
                 v_kn1 = value_array[ind_s]
                 
                 # calculate new value
-                value_array[ind_s], a_ind_opt_array[ind_s] = update_node_value(x, get_actions, get_cost, Dt, value_array, env, veh, sg)
+                value_array[ind_s], a_ind_opt_array[ind_s] = update_node_value(x, get_actions, get_cost, Dt, value_array, veh, sg)
                 
                 # compare old and new values, update largest change in value
                 v_k = value_array[ind_s]
