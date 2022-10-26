@@ -55,10 +55,10 @@ function solve_HJB_PDE(get_actions::Function, get_cost::Function, Dt, env, veh, 
         end
     end
 
-    return value_array, a_ind_opt_array, set_array
+    return value_array, a_ind_opt_array
 end
 
-function update_node_value(x, get_actions::Function, get_cost::Function, Dt, value_array, env, veh, sg) 
+function update_node_value(x, get_actions::Function, get_cost::Function, Dt, value_array, veh, sg) 
     # using entire action set
     ro_actions = get_actions(x, Dt, veh)
     a_ind_array = collect(1:length(ro_actions))

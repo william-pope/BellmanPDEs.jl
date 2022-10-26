@@ -1,11 +1,33 @@
 # utils.jl
 
+function optimize_action(x, a_ind_array, actions, get_cost::Function, Dt, value_array, veh, sg)
+    val_x = Inf
+    a_ind_opt = 1
+    
+    for a_ind in a_ind_array
+        a = actions[a_ind]
+
+        cost_x_a = get_cost(x, a, Dt)
+
+        x_p, _ = propagate_state(x, a, Dt, veh)
+        val_xp = interp_state_value(x_p, value_array, sg)
+
+        qval_x_a = cost_x_a + val_xp
+
+        if qval_x_a < val_x
+            val_x = qval_x_a
+            a_ind_opt = a_ind
+        end
+    end
+
+    return a_ind_opt, val_x
+end
+
 function propagate_state(x_k, a_k, Dt, veh)
     # define number of substeps used in integration
     substeps = 4
 
     x_k1_subpath = Array{Array{Float64, 1}, 1}(undef, substeps)
-
     Dt_sub = Dt / substeps
 
     # step through substeps from x_k
@@ -63,29 +85,6 @@ function discrete_time_EoM(x_k, a_k, Dt, veh)
     x_k1 = SA[xp_k1, yp_k1, theta_k1, v_k1]
 
     return x_k1
-end
-
-function optimize_action(x, a_ind_array, actions, get_cost::Function, Dt, value_array, veh, sg)
-    val_x = Inf
-    a_ind_opt = 1
-    
-    for a_ind in a_ind_array
-        a = actions[a_ind]
-
-        cost_x_a = get_cost(x, a, Dt)
-
-        x_p, _ = propagate_state(x, a, Dt, veh)
-        val_xp = interp_state_value(x_p, value_array, sg)
-
-        qval_x_a = cost_x_a + val_xp
-
-        if qval_x_a < val_x
-            val_x = qval_x_a
-            a_ind_opt = a_ind
-        end
-    end
-
-    return a_ind_opt, val_x
 end
 
 function interp_state_value(x, value_array, sg)

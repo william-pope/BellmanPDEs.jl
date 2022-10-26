@@ -20,7 +20,7 @@ struct StateGrid
     ind_gs_array::Array
 end
 
-# defines environment geoemtry
+# defines environment geometry
 function define_environment(workspace, obstacle_list, goal)
     env = Environment(workspace, obstacle_list, goal)
     return env
@@ -34,7 +34,7 @@ function define_vehicle(wheelbase, body_dims, origin_to_cent)
     y0_max = origin_to_cent[2] + 1/2*body_dims[2]
     origin_body = VPolygon([[x0_min, y0_min], [x0_max, y0_min], [x0_max, y0_max], [x0_min, y0_max]])
 
-    veh = VehicleBodyBody(wheelbase, body_dims, origin_to_cent, origin_body)
+    veh = VehicleBody(wheelbase, body_dims, origin_to_cent, origin_body)
     return veh
 end
 
