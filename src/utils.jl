@@ -1,26 +1,37 @@
 # utils.jl
 
-function optimize_action(x, a_ind_array, actions, get_cost::Function, Dt, value_array, veh, sg)
-    val_x = Inf
-    a_ind_opt = 1
+# NOTE: needs to be general for:
+#   - solving value grid
+#   - planning over full action space
+#   - planning over smaller action space
+
+#   - val_x - best value result out of actions tested (single Float64)
+#   - ia_opt - action tested that produced best value (single Int)
+#   - qval_x_array - value produced by each of actions tested (array of Float64, length(ia_set))
+
+function optimize_action(x, ia_set, actions, get_cost::Function, Dt, value_array, veh, sg)    
+    qval_x_array = zeros(Float64, length(ia_set))  
     
-    for a_ind in a_ind_array
-        a = actions[a_ind]
+    # iterate through all given action indices
+    for ja in eachindex(ia_set)
+        a = actions[ia_set[ja]]
 
         cost_x_a = get_cost(x, a, Dt)
 
         x_p, _ = propagate_state(x, a, Dt, veh)
         val_xp = interp_value(x_p, value_array, sg)
 
-        qval_x_a = cost_x_a + val_xp
-
-        if qval_x_a < val_x
-            val_x = qval_x_a
-            a_ind_opt = a_ind
-        end
+        qval_x_array[ja] = cost_x_a + val_xp
     end
 
-    return a_ind_opt, val_x
+    # get value
+    val_x = minimum(qval_x_array)
+
+    # get optimal action index
+    ja_opt = findmin(qval_x_array)[2]
+    ia_opt = ia_set[ja_opt]
+
+    return qval_x_array, val_x, ia_opt
 end
 
 function propagate_state(x_k, a_k, Dt, veh)
@@ -62,12 +73,12 @@ function discrete_time_EoM(x_k, a_k, Dt, veh)
     phi_k = a_k[1]
     Dv_k = a_k[2]
 
-    # calculate change in state over discrete time interval
+    # calculate derivative at current state
     xp_dot_k = (v_k + Dv_k) * cos(theta_k)
     yp_dot_k = (v_k + Dv_k) * sin(theta_k)
     theta_dot_k = (v_k + Dv_k) * 1/veh.l * tan(phi_k)
 
-    # calculate next state
+    # calculate next state with linear approximation
     xp_k1 = xp_k + (xp_dot_k * Dt)
     yp_k1 = yp_k + (yp_dot_k * Dt)
     theta_k1 = theta_k + (theta_dot_k * Dt)
@@ -107,7 +118,7 @@ end
 function multi2single_ind(ind_m, sg)
     ind_s = 1
     for d in eachindex(ind_m)
-        ind_s += (ind_m[d]-1)*prod(sg.state_grid.cut_counts[1:(d-1)])
+        ind_s += (ind_m[d]-1) * prod(sg.state_grid.cut_counts[1:(d-1)])
     end
 
     return ind_s
@@ -129,7 +140,7 @@ function in_obstacle_set(x, env, veh)
     veh_body = state_to_body(x, veh)
 
     for obstacle in env.obstacle_list
-        if isempty(intersection(veh_body, obstacle)) == false
+        if isempty(intersection(veh_body, obstacle)) == false || isempty(intersection(obstacle, veh_body)) == false
             return true
         end
     end
@@ -139,9 +150,17 @@ end
 
 # target set checker
 function in_target_set(x, env, veh)
-    x_point = Singleton(x[1:2])
+    # state only inside goal region
+    # x_pos = Singleton(x[1:2])
 
-    if issubset(x_point, env.goal)
+    # if issubset(x_pos, env.goal)
+    #     return true
+    # end
+
+    # full body inside goal region
+    veh_body = state_to_body(x, veh)
+
+    if issubset(veh_body, env.goal)
         return true
     end
 
@@ -151,12 +170,13 @@ end
 # vehicle body transformation function
 function state_to_body(x, veh)
     # rotate body about origin by theta
-    rot_matrix = [cos(x[3]) -sin(x[3]); sin(x[3]) cos(x[3])]
+    theta = x[3]
+    rot_matrix = [cos(theta) -sin(theta); sin(theta) cos(theta)]
     body = linear_map(rot_matrix, veh.origin_body)
 
     # translate body from origin by [x, y]
-    trans_vec = x[1:2]
-    LazySets.translate!(body, trans_vec)
+    pos_vec = x[1:2]
+    LazySets.translate!(body, pos_vec)
 
     return body
 end

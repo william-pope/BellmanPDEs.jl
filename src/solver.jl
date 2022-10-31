@@ -3,7 +3,7 @@
 # main function to iteratively calculate HJB value function
 function solve_HJB_PDE(get_actions::Function, get_cost::Function, Dt, env, veh, sg, Dval_tol, max_solve_steps)
     # initialize data arrays
-    value_array, a_ind_opt_array, set_array = initialize_value_array(sg, env, veh)
+    q_value_array, value_array, set_array = initialize_value_array(Dt, get_actions, sg, env, veh)
 
     num_gs_sweeps = 2^dimensions(sg.state_grid)
 
@@ -24,15 +24,11 @@ function solve_HJB_PDE(get_actions::Function, get_cost::Function, Dt, env, veh, 
                 v_kn1 = value_array[ind_s]
                 
                 # calculate new value
-                value_array[ind_s], a_ind_opt_array[ind_s] = update_node_value(x, get_actions, get_cost, Dt, value_array, veh, sg)
+                q_value_array[ind_s], value_array[ind_s], _ = update_node_value(x, get_actions, get_cost, Dt, value_array, veh, sg)
                 
                 # compare old and new values, update largest change in value
                 v_k = value_array[ind_s]
                 Dval = abs(v_k - v_kn1)
-
-                if Dval > 1e5
-                    println(Dval)
-                end
 
                 if Dval > Dval_max
                     Dval_max = Dval
@@ -55,43 +51,51 @@ function solve_HJB_PDE(get_actions::Function, get_cost::Function, Dt, env, veh, 
         end
     end
 
-    return value_array, a_ind_opt_array
+    return q_value_array, value_array
 end
 
+# ISSUE: seems like q_value_array is not being updated properly
 function update_node_value(x, get_actions::Function, get_cost::Function, Dt, value_array, veh, sg) 
     # using entire action set
-    ro_actions = get_actions(x, Dt, veh)
-    a_ind_array = collect(1:length(ro_actions))
+    actions = get_actions(x, Dt, veh)
+    ia_set = collect(1:length(actions))
 
     # find optimal action and value at state
-    a_ind_opt, val_x = optimize_action(x, a_ind_array, ro_actions, get_cost::Function, Dt, value_array, veh, sg)
+    qval_x_array, val_x, ia_opt = optimize_action(x, ia_set, actions, get_cost::Function, Dt, value_array, veh, sg)
    
-    return val_x, a_ind_opt
+    return qval_x_array, val_x, ia_opt
 end
 
 # initialize arrays
-function initialize_value_array(sg, env, veh)
-    value_array = zeros(Float64, length(sg.state_grid))
-    a_ind_opt = zeros(Int, length(sg.state_grid))
-    set_array = zeros(Int, length(sg.state_grid))
+function initialize_value_array(Dt, get_actions::Function, sg, env, veh)
+    x = sg.state_list_static[1]
+    actions = get_actions(x, Dt, veh)
+    ia_set = collect(1:length(actions))
+    
+    q_value_array = Vector{Vector{Float64}}(undef, length(sg.state_grid))
+    value_array = Vector{Float64}(undef, length(sg.state_grid))
+    set_array = Vector{Int}(undef, length(sg.state_grid))
 
     for ind_m in sg.ind_gs_array[1]
         ind_s = multi2single_ind(ind_m, sg)
         x = sg.state_list_static[ind_s]
 
         if in_workspace(x, env, veh) == false || in_obstacle_set(x, env, veh) == true
-            value_array[ind_s] = 1e5
+            q_value_array[ind_s] = 1e6 * ones(length(ia_set))
+            value_array[ind_s] = 1e6
             set_array[ind_s] = 0
         
         elseif in_target_set(x, env, veh) == true
+            q_value_array[ind_s] = 0.0 * ones(length(ia_set))
             value_array[ind_s] = 0.0
             set_array[ind_s] = 1
         
         else
-            value_array[ind_s] = 1e5
+            q_value_array[ind_s] = 1e6 * ones(length(ia_set))
+            value_array[ind_s] = 1e6
             set_array[ind_s] = 2
         end
     end
 
-    return value_array, a_ind_opt, set_array
+    return q_value_array, value_array, set_array
 end
