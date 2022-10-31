@@ -130,7 +130,7 @@ function plot_HJB_path(x_path_list, x_subpath_list, env, veh, linez_clim)
         end
     end
 
-    label_list = ["Pure HJB Policy", "Reactive Policy"]
+    label_list = ["Pure HJB", "Reactive", "Approx Reactive"]
     for ip in axes(x_path_list, 1)
         x_path = x_path_list[ip]
         x_subpath = x_subpath_list[ip]

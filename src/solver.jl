@@ -57,8 +57,7 @@ end
 # ISSUE: seems like q_value_array is not being updated properly
 function update_node_value(x, get_actions::Function, get_cost::Function, Dt, value_array, veh, sg) 
     # using entire action set
-    actions = get_actions(x, Dt, veh)
-    ia_set = collect(1:length(actions))
+    actions, ia_set = get_actions(x, Dt, veh)
 
     # find optimal action and value at state
     qval_x_array, val_x, ia_opt = optimize_action(x, ia_set, actions, get_cost::Function, Dt, value_array, veh, sg)
@@ -69,8 +68,7 @@ end
 # initialize arrays
 function initialize_value_array(Dt, get_actions::Function, sg, env, veh)
     x = sg.state_list_static[1]
-    actions = get_actions(x, Dt, veh)
-    ia_set = collect(1:length(actions))
+    actions, ia_set = get_actions(x, Dt, veh)
     
     q_value_array = Vector{Vector{Float64}}(undef, length(sg.state_grid))
     value_array = Vector{Float64}(undef, length(sg.state_grid))
