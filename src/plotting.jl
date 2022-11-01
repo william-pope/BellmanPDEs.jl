@@ -19,7 +19,7 @@ function plot_HJB_value(value_array, env, veh, sg, heatmap_clim)
                 # title="HJB Value Function",
                 # titlefontsize = 20,
                 # legend=false, 
-                legend=:topright,
+                legend=:bottomright,
                 legend_font_pointsize = 11,
                 colorbar=true,
                 colorbar_title = "Value",
@@ -95,9 +95,10 @@ end
 # plot paths from planner
 function plot_HJB_path(x_path_list, x_subpath_list, env, veh, linez_clim)
     p_planner = plot(aspect_ratio=:equal,
-        xticks=0:4:20, yticks=0:4:20, 
         size=(800,800), dpi=300,
+        xticks=0:4:20, yticks=0:4:20, 
         xlabel="x-axis [m]", ylabel="y-axis [m]",
+        legend=:bottomright,
         top_margin = -36*Plots.mm,
         bottom_margin = -8*Plots.mm,
         left_margin = 8*Plots.mm,
@@ -107,7 +108,7 @@ function plot_HJB_path(x_path_list, x_subpath_list, env, veh, linez_clim)
     plot!(p_planner, env.workspace, 
         alpha=0.0, 
         linecolor=:black, linewidth=2, linealpha=1.0, 
-        label="Workspace")
+        label="")
     
     # goal
     plot!(p_planner, env.goal, 
@@ -130,7 +131,7 @@ function plot_HJB_path(x_path_list, x_subpath_list, env, veh, linez_clim)
         end
     end
 
-    label_list = ["Pure HJB", "Reactive", "Approx Reactive"]
+    label_list = ["Optimal", "Optimal Reactive", "Approx Reactive"]
     for ip in axes(x_path_list, 1)
         x_path = x_path_list[ip]
         x_subpath = x_subpath_list[ip]
@@ -150,7 +151,7 @@ function plot_HJB_path(x_path_list, x_subpath_list, env, veh, linez_clim)
         # path points
         plot!(p_planner, getindex.(x_path,1), getindex.(x_path,2),
             linewidth = 0, linealpha=0.0,
-            markershape=:circle, markersize=2.5, markerstrokewidth=0, 
+            markershape=:circle, markersize=2.75, markerstrokewidth=0, 
             label=label_list[ip])
 
         # start position
@@ -160,7 +161,7 @@ function plot_HJB_path(x_path_list, x_subpath_list, env, veh, linez_clim)
 
         veh_body = state_to_body(x_path[1], veh)
         plot!(p_planner, veh_body, alpha=0.0,
-            linewidth=2, linealpha=1.0, label="")
+            linecolor=:black, linewidth=2, linealpha=1.0, label="")
 
         # end position
         plot!(p_planner, [x_path[end][1]], [x_path[end][2]], 
@@ -169,7 +170,7 @@ function plot_HJB_path(x_path_list, x_subpath_list, env, veh, linez_clim)
 
         veh_body = state_to_body(x_path[end], veh)
         plot!(p_planner, veh_body, alpha=0.0, 
-            linewidth=2, linealpha=1.0, label="")
+            linecolor=:black, linewidth=2, linealpha=1.0, label="")
     end
 
     display("image/png", p_planner)

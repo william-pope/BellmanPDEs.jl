@@ -56,6 +56,8 @@ function HJB_policy(x_k, Dv_RC, get_actions::Function, get_cost::Function, Dt, q
     return a_k_opt
 end
 
+# NOTE: make more explicit that backup action is just the pure HJB policy
+#   - removing RC actions is just a convenience step
 function reactive_policy(x_k, Dv_RC, get_actions::Function, get_cost::Function, Dt, q_value_array, value_array, veh, sg)    
     # get actions for current state
     actions, ia_set = get_actions(x_k, Dt, veh)

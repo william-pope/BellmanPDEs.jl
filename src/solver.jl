@@ -68,7 +68,7 @@ end
 # initialize arrays
 function initialize_value_array(Dt, get_actions::Function, sg, env, veh)
     x = sg.state_list_static[1]
-    actions, ia_set = get_actions(x, Dt, veh)
+    _, ia_set = get_actions(x, Dt, veh)
     
     q_value_array = Vector{Vector{Float64}}(undef, length(sg.state_grid))
     value_array = Vector{Float64}(undef, length(sg.state_grid))
