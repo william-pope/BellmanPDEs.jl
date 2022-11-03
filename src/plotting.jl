@@ -11,7 +11,7 @@ function plot_HJB_value(value_array, env, veh, sg, heatmap_clim)
             plot_val = transpose(value_array_m[:, :, i3_plot, i4_plot])
 
             p_solver = heatmap(sg.state_grid.cutPoints[1], sg.state_grid.cutPoints[2], 
-                plot_val, clim=(-15, 0),
+                plot_val, clim=(-15, 10),
                 aspect_ratio=:equal, 
                 xticks=0:4:20, yticks=0:4:20,
                 size=(800,800), dpi=300,
@@ -178,11 +178,10 @@ end
 
 function plot_path_value(val_path_list, Dt)
     p_value = plot(
-        xlabel="Time [sec]", ylabel="Value")
-        # ,
-        # title="Rollout Policy vs Pure HJB Policy")
+        xlabel="Time [sec]", ylabel="Value",
+        legend=:topleft)
 
-    label_list = ["Rollout Policy", "Pure HJB Policy"]
+    label_list = ["Optimal", "Optimal Reactive", "Approx Reactive"]
     for ip in axes(val_path_list, 1)
         val_path = val_path_list[ip]
         tspan = 0:Dt:(length(val_path)-1)*Dt

@@ -21,7 +21,8 @@ function optimize_action(x, ia_set, actions, get_reward::Function, Dt, value_arr
         x_p, _ = propagate_state(x, a, Dt, veh)
         val_xp = interp_value(x_p, value_array, sg)
 
-        qval_x_array[ja] = reward_x_a + val_xp
+        # TO-DO: add discount
+        qval_x_array[ja] = reward_x_a + 1.0*val_xp
     end
 
     # get value
@@ -184,7 +185,7 @@ end
 # used to create circles as polygons in LazySets.jl
 function VPolyCircle(cent_cir, r_cir)
     # number of points used to discretize edge of circle
-    pts = 12
+    pts = 16
 
     # circle radius is used as midpoint radius for polygon faces (over-approximation)
     r_poly = r_cir/cos(pi/pts)
