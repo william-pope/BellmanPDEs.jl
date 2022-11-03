@@ -9,26 +9,26 @@
 #   - ia_opt - action tested that produced best value (single Int)
 #   - qval_x_array - value produced by each of actions tested (array of Float64, length(ia_set))
 
-function optimize_action(x, ia_set, actions, get_cost::Function, Dt, value_array, veh, sg)    
+function optimize_action(x, ia_set, actions, get_reward::Function, Dt, value_array, veh, sg)    
     qval_x_array = zeros(Float64, length(ia_set))  
     
     # iterate through all given action indices
     for ja in eachindex(ia_set)
         a = actions[ia_set[ja]]
 
-        cost_x_a = get_cost(x, a, Dt)
+        reward_x_a = get_reward(x, a, Dt)
 
         x_p, _ = propagate_state(x, a, Dt, veh)
         val_xp = interp_value(x_p, value_array, sg)
 
-        qval_x_array[ja] = cost_x_a + val_xp
+        qval_x_array[ja] = reward_x_a + val_xp
     end
 
     # get value
-    val_x = minimum(qval_x_array)
+    val_x = maximum(qval_x_array)
 
     # get optimal action index
-    ja_opt = findmin(qval_x_array)[2]
+    ja_opt = findmax(qval_x_array)[2]
     ia_opt = ia_set[ja_opt]
 
     return qval_x_array, val_x, ia_opt
@@ -102,7 +102,7 @@ function interp_value(x, value_array, sg)
     # check if current state is within state space
     for d in eachindex(x)
         if x[d] < sg.state_grid.cutPoints[d][1] || x[d] > sg.state_grid.cutPoints[d][end]
-            val_x = 1e5
+            val_x = -1e6
 
             return val_x
         end
