@@ -16,13 +16,12 @@ function optimize_action(x, ia_set, actions, get_reward::Function, Dt, value_arr
     for ja in eachindex(ia_set)
         a = actions[ia_set[ja]]
 
-        reward_x_a = get_reward(x, a, Dt)
+        reward_x_a = get_reward(x, a, Dt, veh)
 
         x_p, _ = propagate_state(x, a, Dt, veh)
         val_xp = interp_value(x_p, value_array, sg)
 
-        # TO-DO: add discount
-        qval_x_array[ja] = reward_x_a + 1.0*val_xp
+        qval_x_array[ja] = reward_x_a + veh.discount * val_xp
     end
 
     # get value

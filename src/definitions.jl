@@ -11,6 +11,9 @@ struct VehicleBody
     body_dims::Array{Float64}
     origin_to_cent::Array{Float64}
     origin_body::VPolygon
+    phi_max::Float64
+    v_max::Float64
+    discount::Float64
 end
 
 struct StateGrid
@@ -27,14 +30,14 @@ function define_environment(workspace, obstacle_list, goal)
 end
 
 # defines vehicle geometry
-function define_vehicle(wheelbase, body_dims, origin_to_cent)
+function define_vehicle(wheelbase, body_dims, origin_to_cent, phi_max, v_max, discount)
     x0_min = origin_to_cent[1] - 1/2*body_dims[1]
     x0_max = origin_to_cent[1] + 1/2*body_dims[1]
     y0_min = origin_to_cent[2] - 1/2*body_dims[2]
     y0_max = origin_to_cent[2] + 1/2*body_dims[2]
     origin_body = VPolygon([[x0_min, y0_min], [x0_max, y0_min], [x0_max, y0_max], [x0_min, y0_max]])
 
-    veh = VehicleBody(wheelbase, body_dims, origin_to_cent, origin_body)
+    veh = VehicleBody(wheelbase, body_dims, origin_to_cent, origin_body, phi_max, v_max, discount)
     return veh
 end
 

@@ -85,7 +85,7 @@ function initialize_value_array(Dt, get_actions::Function, sg, env, veh)
         
         elseif in_target_set(x, env, veh) == true
             q_value_array[ind_s] = 10.0 * ones(length(ia_set))
-            value_array[ind_s] = 10.0
+            value_array[ind_s] = 1000.0
             set_array[ind_s] = 1
         
         else
