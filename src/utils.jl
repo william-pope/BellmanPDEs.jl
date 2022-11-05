@@ -21,7 +21,7 @@ function optimize_action(x, ia_set, actions, get_reward::Function, Dt, value_arr
         x_p, _ = propagate_state(x, a, Dt, veh)
         val_xp = interp_value(x_p, value_array, sg)
 
-        qval_x_array[ja] = reward_x_a + veh.discount * val_xp
+        qval_x_array[ja] = reward_x_a + val_xp
     end
 
     # get value
