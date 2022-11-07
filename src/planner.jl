@@ -56,6 +56,47 @@ function HJB_policy(x_k, Dv_RC, get_actions::Function, get_reward::Function, Dt,
     return a_k_opt
 end
 
+function approx_HJB_policy(x_k, Dv_RC, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
+    actions, ia_set = get_actions(x_k, Dt, veh)
+
+    # A) get near-optimal action from nearest neighbor ---
+    # find nearest neighbor in state grid
+    ind_s_nbrs, weights_nbrs = interpolants(sg.state_grid, x_k)
+    ind_s_NN = ind_s_nbrs[findmax(weights_nbrs)[2]]
+
+    # minimize Q-value to find best action
+    qvals_NN = q_value_array[ind_s_NN]
+    ia_NN_opt = argmax(ia -> qvals_NN[ia], ia_set)
+
+    # check if ia_NN_opt is a valid action
+    x_p, _ = propagate_state(x_k, actions[ia_NN_opt], Dt, veh)
+    val_NN_opt = interp_value(x_p, value_array, sg)
+
+    # println("val_NN_opt = ", val_NN_opt)
+
+    infty_set_lim = -50.0
+    if val_NN_opt >= infty_set_lim
+        a_ro = actions[ia_NN_opt]
+
+        return a_ro
+    end
+
+    # println("taking HJB action")
+
+    # B) if NN action is not valid, then find pure HJB best action ---
+    _, _, ia_HJB = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
+
+    # check if HJB is a valid action
+    x_p, _ = propagate_state(x_k, actions[ia_HJB], Dt, veh)
+    val_HJB = interp_value(x_p, value_array, sg)
+
+    # println("val_HJB = ", val_HJB, "\n")
+
+    a_ro = actions[ia_HJB]
+
+    return a_ro
+end
+
 # NOTE: make more explicit that backup action is just the pure HJB policy
 #   - removing RC actions is just a convenience step
 function reactive_policy(x_k, Dv_RC, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)    
@@ -136,7 +177,7 @@ function approx_reactive_policy(x_k, Dv_RC, get_actions::Function, get_reward::F
     x_p, _ = propagate_state(x_k, actions[ia_NN_RC_best], Dt, veh)
     val_NN_RC_best = interp_value(x_p, value_array, sg)
 
-    println("val_NN_RC_best = ", val_NN_RC_best)
+    # println("val_NN_RC_best = ", val_NN_RC_best)
 
     infty_set_lim = -50.0
     if val_NN_RC_best >= infty_set_lim
@@ -145,7 +186,7 @@ function approx_reactive_policy(x_k, Dv_RC, get_actions::Function, get_reward::F
         return a_ro
     end
 
-    println("taking HJB action")
+    # println("taking HJB action")
 
     # B) if NN RC action is not valid, then find pure HJB best action ---
     _, _, ia_HJB = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
@@ -154,7 +195,7 @@ function approx_reactive_policy(x_k, Dv_RC, get_actions::Function, get_reward::F
     x_p, _ = propagate_state(x_k, actions[ia_HJB], Dt, veh)
     val_HJB = interp_value(x_p, value_array, sg)
 
-    println("val_HJB = ", val_HJB, "\n")
+    # println("val_HJB = ", val_HJB, "\n")
 
     a_ro = actions[ia_HJB]
     

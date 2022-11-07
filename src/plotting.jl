@@ -11,7 +11,7 @@ function plot_HJB_value(value_array, env, veh, sg, heatmap_clim)
             plot_val = transpose(value_array_m[:, :, i3_plot, i4_plot])
 
             p_solver = heatmap(sg.state_grid.cutPoints[1], sg.state_grid.cutPoints[2], 
-                plot_val, clim=(250, 1000),
+                plot_val, clim=(950, 1000),
                 aspect_ratio=:equal, 
                 xticks=0:4:20, yticks=0:4:20,
                 size=(800,800), dpi=300,
@@ -174,7 +174,7 @@ function plot_HJB_growth(value_array, heatmap_clim, step, env, veh)
 end
 
 # plot paths from planner
-function plot_HJB_path(x_path_list, x_subpath_list, env, veh, linez_clim)
+function plot_HJB_path(x_path_list, x_subpath_list, env, veh, linez_clim, label_list)
     p_planner = plot(aspect_ratio=:equal,
         size=(800,800), dpi=300,
         xticks=0:4:20, yticks=0:4:20, 
@@ -212,7 +212,6 @@ function plot_HJB_path(x_path_list, x_subpath_list, env, veh, linez_clim)
         end
     end
 
-    label_list = ["Optimal", "Optimal Reactive", "Approx Reactive"]
     for ip in axes(x_path_list, 1)
         x_path = x_path_list[ip]
         x_subpath = x_subpath_list[ip]
