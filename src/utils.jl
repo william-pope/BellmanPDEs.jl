@@ -189,13 +189,12 @@ end
 
 # vehicle body transformation function
 function state_to_body_circle(x, veh)
-    r_vb = sqrt((0.5*veh.body_dims[1])^2 + (0.5*veh.body_dims[2])^2)
     d = veh.origin_to_cent[1]
 
     xp_c = x[1] + d * cos(x[3])
     yp_c = x[2] + d * sin(x[3])
 
-    body_circle = VPolyCircle([xp_c, yp_c], r_vb)
+    body_circle = VPolyCircle([xp_c, yp_c], veh.radius_vb)
 
     return body_circle
 end
