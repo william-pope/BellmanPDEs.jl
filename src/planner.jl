@@ -86,12 +86,6 @@ function approx_HJB_policy(x_k, Dv_RC, get_actions::Function, get_reward::Functi
     # B) if NN action is not valid, then find pure HJB best action ---
     _, _, ia_HJB = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
 
-    # check if HJB is a valid action
-    x_p, _ = propagate_state(x_k, actions[ia_HJB], Dt, veh)
-    val_HJB = interp_value(x_p, value_array, sg)
-
-    # println("val_HJB = ", val_HJB, "\n")
-
     a_ro = actions[ia_HJB]
 
     return a_ro
@@ -190,12 +184,6 @@ function approx_reactive_policy(x_k, Dv_RC, get_actions::Function, get_reward::F
 
     # B) if NN RC action is not valid, then find pure HJB best action ---
     _, _, ia_HJB = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
-
-    # check if HJB is a valid action
-    x_p, _ = propagate_state(x_k, actions[ia_HJB], Dt, veh)
-    val_HJB = interp_value(x_p, value_array, sg)
-
-    # println("val_HJB = ", val_HJB, "\n")
 
     a_ro = actions[ia_HJB]
     

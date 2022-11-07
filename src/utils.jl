@@ -126,7 +126,8 @@ end
 
 # workspace checker
 function in_workspace(x, env, veh)
-    veh_body = state_to_body(x, veh)
+    # veh_body = state_to_body(x, veh)
+    veh_body = state_to_body_circle(x, veh)
 
     if issubset(veh_body, env.workspace)
         return true
@@ -137,10 +138,15 @@ end
 
 # obstacle set checker
 function in_obstacle_set(x, env, veh)
-    veh_body = state_to_body(x, veh)
+    # veh_body = state_to_body(x, veh)
+    veh_body = state_to_body_circle(x, veh)
 
     for obstacle in env.obstacle_list
-        if isempty(intersection(veh_body, obstacle)) == false || isempty(intersection(obstacle, veh_body)) == false
+        # if isempty(intersection(veh_body, obstacle)) == false || isempty(intersection(obstacle, veh_body)) == false
+        #     return true
+        # end
+
+        if isdisjoint(veh_body, obstacle) == false
             return true
         end
     end
@@ -151,18 +157,18 @@ end
 # target set checker
 function in_target_set(x, env, veh)
     # state only inside goal region
-    # x_pos = Singleton(x[1:2])
+    x_pos = Singleton(x[1:2])
 
-    # if issubset(x_pos, env.goal)
-    #     return true
-    # end
-
-    # full body inside goal region
-    veh_body = state_to_body(x, veh)
-
-    if issubset(veh_body, env.goal)
+    if issubset(x_pos, env.goal)
         return true
     end
+
+    # # full body inside goal region
+    # veh_body = state_to_body(x, veh)
+
+    # if issubset(veh_body, env.goal)
+    #     return true
+    # end
 
     return false
 end
@@ -179,6 +185,19 @@ function state_to_body(x, veh)
     LazySets.translate!(body, pos_vec)
 
     return body
+end
+
+# vehicle body transformation function
+function state_to_body_circle(x, veh)
+    r_vb = sqrt((0.5*veh.body_dims[1])^2 + (0.5*veh.body_dims[2])^2)
+    d = veh.origin_to_cent[1]
+
+    xp_c = x[1] + d * cos(x[3])
+    yp_c = x[2] + d * sin(x[3])
+
+    body_circle = VPolyCircle([xp_c, yp_c], r_vb)
+
+    return body_circle
 end
 
 # used to create circles as polygons in LazySets.jl
