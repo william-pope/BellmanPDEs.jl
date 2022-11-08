@@ -18,7 +18,7 @@ function plan_path(x_0, policy::Function, get_actions::Function, get_reward::Fun
     for plan_step in 1:max_plan_steps
         # calculate rollout action
         Dv_RC = rand([-0.5, 0.0, 0.5])
-        a_k = policy(x_k, Dv_RC, get_actions, get_reward, Dt, q_value_array, value_array, veh, sg)
+        a_k, qval_array = policy(x_k, Dv_RC, get_actions, get_reward, Dt, q_value_array, value_array, veh, sg)
 
         # simulate forward one time step
         x_k1, x_k1_subpath = propagate_state(x_k, a_k, Dt, veh)
@@ -47,13 +47,15 @@ function plan_path(x_0, policy::Function, get_actions::Function, get_reward::Fun
 end
 
 function HJB_policy(x_k, Dv_RC, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
+    # get actions for current state
     actions, ia_set = get_actions(x_k, Dt, veh)
 
-    _, _, ia_opt = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
+    # perform optimization over full action set
+    qval_x_HJB_array, val_x_HJB, ia_HJB = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
 
-    a_k_opt = actions[ia_opt]
+    a_ro = actions[ia_HJB]
 
-    return a_k_opt
+    return a_ro, qval_x_HJB_array
 end
 
 function approx_HJB_policy(x_k, Dv_RC, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
@@ -91,31 +93,28 @@ function approx_HJB_policy(x_k, Dv_RC, get_actions::Function, get_reward::Functi
     return a_ro
 end
 
-# NOTE: make more explicit that backup action is just the pure HJB policy
-#   - removing RC actions is just a convenience step
 function reactive_policy(x_k, Dv_RC, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)    
     # get actions for current state
     actions, ia_set = get_actions(x_k, Dt, veh)
 
     # A) find best phi for Dv given by reactive controller ---
     ia_RC_set = findall(a -> a[2] == Dv_RC, actions)
-    _, val_RC_best, ia_RC_best = optimize_action(x_k, ia_RC_set, actions, get_reward, Dt, value_array, veh, sg)
+    qval_x_RC_array, val_x_RC, ia_RC = optimize_action(x_k, ia_RC_set, actions, get_reward, Dt, value_array, veh, sg)
 
     # check if [Dv_RC, phi_best_RC] is a valid action in static environment ---
-    infty_set_lim = -50.0
-    if val_RC_best >= infty_set_lim
-        a_ro = actions[ia_RC_best]
+    infty_set_lim = 100.0
+    if val_x_RC >= infty_set_lim
+        a_ro = actions[ia_RC]
  
-        return a_ro
+        return a_ro, qval_x_RC_array
     end
 
-    # B) if RC requested Dv is not valid, then find pure HJB best action ---
-    ia_no_RC_set = filter(ia -> !(ia in ia_RC_set), ia_set)
-    _, _, ia_no_RC_best = optimize_action(x_k, ia_no_RC_set, actions, get_reward, Dt, value_array, veh, sg)
+    # B) if RC action is not valid, then find pure HJB best action ---
+    qval_x_HJB_array, val_x_HJB, ia_HJB = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
 
-    a_ro = actions[ia_no_RC_best]
+    a_ro = actions[ia_HJB]
 
-    return a_ro
+    return a_ro, qval_x_HJB_array
 end
 
 # approx reactive HJB_policy

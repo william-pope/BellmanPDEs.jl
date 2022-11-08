@@ -36,7 +36,7 @@ end
 
 function propagate_state(x_k, a_k, Dt, veh)
     # define number of substeps used for integration
-    substeps = 4
+    substeps = 10
     Dt_sub = Dt / substeps
 
     x_k1_subpath = MVector{substeps, SVector{4, Float64}}(undef)

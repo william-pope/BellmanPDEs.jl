@@ -74,6 +74,8 @@ function initialize_value_array(Dt, get_actions::Function, sg, env, veh)
     value_array = Vector{Float64}(undef, length(sg.state_grid))
     set_array = Vector{Int}(undef, length(sg.state_grid))
 
+    println("initializing value_array")
+    
     for ind_m in sg.ind_gs_array[1]
         ind_s = multi2single_ind(ind_m, sg)
         x = sg.state_list_static[ind_s]
