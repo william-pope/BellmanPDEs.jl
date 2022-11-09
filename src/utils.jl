@@ -114,6 +114,24 @@ function interp_value(x, value_array, sg)
     return val_x
 end
 
+function interp_value_NN(x, value_array, sg)
+    # check if current state is within state space
+    for d in eachindex(x)
+        if x[d] < sg.state_grid.cutPoints[d][1] || x[d] > sg.state_grid.cutPoints[d][end]
+            val_x = -1e6
+
+            return val_x
+        end
+    end
+
+    # take nearest-neighbor value
+    ind_s_nbrs, weights_nbrs = interpolants(sg.state_grid, x)
+    ind_s_NN = ind_s_nbrs[findmax(weights_nbrs)[2]]
+    val_x = value_array[ind_s_NN]
+
+    return val_x
+end
+
 # used for GridInterpolations.jl indexing
 function multi2single_ind(ind_m, sg)
     ind_s = 1

@@ -1,7 +1,7 @@
 # planner.jl
 
 # main function to generate a path from an initial state to goal
-function plan_path(x_0, policy::Function, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, env, veh, sg, max_plan_steps)
+function plan_path(x_0, policy::Function, safe_value_lim, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, env, veh, sg, max_plan_steps)
     val_0 = interp_value(x_0, value_array, sg)
     
     x_path = []
@@ -18,7 +18,7 @@ function plan_path(x_0, policy::Function, get_actions::Function, get_reward::Fun
     for plan_step in 1:max_plan_steps
         # calculate rollout action
         Dv_RC = rand([-0.5, 0.0, 0.5])
-        a_k, qval_array = policy(x_k, Dv_RC, get_actions, get_reward, Dt, q_value_array, value_array, veh, sg)
+        a_k, qval_array = policy(x_k, Dv_RC, safe_value_lim, get_actions, get_reward, Dt, q_value_array, value_array, veh, sg)
 
         # simulate forward one time step
         x_k1, x_k1_subpath = propagate_state(x_k, a_k, Dt, veh)
@@ -46,19 +46,37 @@ function plan_path(x_0, policy::Function, get_actions::Function, get_reward::Fun
     return x_path, x_subpath, a_path, val_path
 end
 
-function HJB_policy(x_k, Dv_RC, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
+function HJB_policy(x_k, Dv_RC, safe_value_lim, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
     # get actions for current state
     actions, ia_set = get_actions(x_k, Dt, veh)
 
     # perform optimization over full action set
     qval_x_HJB_array, val_x_HJB, ia_HJB = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
 
+    # check for trough point
+    if x_k[4] == 0.0 && actions[ia_HJB][2] == 0.0
+        # take best Dv=+0.5 action
+        ia_Dv_pos_set = findall(a -> a[2] > 0.0, actions)
+        ia_HJB = argmax(ia -> qval_x_HJB_array[ia], ia_Dv_pos_set)
+    end
+
     a_ro = actions[ia_HJB]
 
     return a_ro, qval_x_HJB_array
 end
 
-function approx_HJB_policy(x_k, Dv_RC, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
+#=
+println("state in trough")
+println("ia_Dv_pos_set = ", ia_Dv_pos_set)
+println("new ia_HJB = ", ia_HJB)
+
+println("Q-values = ")
+for q in qval_x_HJB_array
+    println(q)
+end
+=#
+
+function approx_HJB_policy(x_k, Dv_RC, safe_value_lim, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
     actions, ia_set = get_actions(x_k, Dt, veh)
 
     # A) get near-optimal action from nearest neighbor ---
@@ -76,8 +94,7 @@ function approx_HJB_policy(x_k, Dv_RC, get_actions::Function, get_reward::Functi
 
     # println("val_NN_opt = ", val_NN_opt)
 
-    infty_set_lim = -50.0
-    if val_NN_opt >= infty_set_lim
+    if val_NN_opt >= safe_value_lim
         a_ro = actions[ia_NN_opt]
 
         return a_ro
@@ -93,7 +110,7 @@ function approx_HJB_policy(x_k, Dv_RC, get_actions::Function, get_reward::Functi
     return a_ro
 end
 
-function reactive_policy(x_k, Dv_RC, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)    
+function reactive_policy(x_k, Dv_RC, safe_value_lim, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)    
     # get actions for current state
     actions, ia_set = get_actions(x_k, Dt, veh)
 
@@ -102,8 +119,7 @@ function reactive_policy(x_k, Dv_RC, get_actions::Function, get_reward::Function
     qval_x_RC_array, val_x_RC, ia_RC = optimize_action(x_k, ia_RC_set, actions, get_reward, Dt, value_array, veh, sg)
 
     # check if [Dv_RC, phi_best_RC] is a valid action in static environment ---
-    infty_set_lim = 100.0
-    if val_x_RC >= infty_set_lim
+    if val_x_RC >= safe_value_lim
         a_ro = actions[ia_RC]
  
         return a_ro, qval_x_RC_array
@@ -150,7 +166,7 @@ end
 #   - MAIN IDEA: instead of perfoming Q-value optimization at exact state, choose minimum from stored Q-values at neighboring nodes
 
 
-function approx_reactive_policy(x_k, Dv_RC, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
+function approx_reactive_policy(x_k, Dv_RC, safe_value_lim, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
     # get actions for current state
     actions, ia_set = get_actions(x_k, Dt, veh)
 
@@ -172,8 +188,7 @@ function approx_reactive_policy(x_k, Dv_RC, get_actions::Function, get_reward::F
 
     # println("val_NN_RC_best = ", val_NN_RC_best)
 
-    infty_set_lim = -50.0
-    if val_NN_RC_best >= infty_set_lim
+    if val_NN_RC_best >= safe_value_lim
         a_ro = actions[ia_NN_RC_best]
 
         return a_ro

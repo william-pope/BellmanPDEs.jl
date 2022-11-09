@@ -75,7 +75,9 @@ function initialize_value_array(Dt, get_actions::Function, sg, env, veh)
     set_array = Vector{Int}(undef, length(sg.state_grid))
 
     println("initializing value_array")
+    println("total grid nodes = ", length(sg.state_grid))
     
+    init_step = 1
     for ind_m in sg.ind_gs_array[1]
         ind_s = multi2single_ind(ind_m, sg)
         x = sg.state_list_static[ind_s]
@@ -95,6 +97,13 @@ function initialize_value_array(Dt, get_actions::Function, sg, env, veh)
             value_array[ind_s] = -1e6
             set_array[ind_s] = 2
         end
+
+        # println(init_step)
+        if init_step % 1000 == 0
+            println("initializing grid index: ", init_step)
+        end
+
+        init_step += 1
     end
 
     return q_value_array, value_array, set_array
