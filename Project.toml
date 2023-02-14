@@ -4,11 +4,17 @@ authors = ["William Pope"]
 version = "0.1.0"
 
 [deps]
+ARDESPOT = "d96c9ae4-3372-47d5-8a88-316ae77be8cf"
 GridInterpolations = "bb4c363b-b914-514b-8517-4eb369bc008a"
+JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LazySets = "b4f0291d-fe17-52bc-9479-3d1a343d9043"
+POMDPTools = "7588e00f-9cae-40de-98dc-e0c70c48cdd7"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+ProfileView = "c46f51b8-102a-5cf2-8d2c-8597cb0e0da7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+StaticArraysCore = "1e83bf80-4336-4d27-bf5d-d5a4f845583c"
+UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 
 [compat]
 julia = "1"

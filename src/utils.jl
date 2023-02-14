@@ -142,6 +142,8 @@ function multi2single_ind(ind_m, sg)
     return ind_s
 end
 
+# NOTE: LazySets functions used here
+
 # workspace checker
 function in_workspace(x, env, veh)
     # veh_body = state_to_body(x, veh)

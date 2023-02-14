@@ -3,11 +3,13 @@
 # main function to iteratively calculate HJB value function
 function solve_HJB_PDE(get_actions::Function, get_reward::Function, Dt, env, veh, sg, Dval_tol, max_solve_steps)
     # initialize data arrays
+    println("initializing ---")
     q_value_array, value_array, set_array = initialize_value_array(Dt, get_actions, sg, env, veh)
 
     num_gs_sweeps = 2^dimensions(sg.state_grid)
 
     # main function loop
+    println("solving ---")
     gs_step = 1
 
     for solve_step in 1:max_solve_steps
@@ -18,7 +20,7 @@ function solve_HJB_PDE(get_actions::Function, get_reward::Function, Dt, env, veh
 
             # if the node is in free space, update its value
             if set_array[ind_s] == 2
-                x = sg.state_list_static[ind_s]     # SPEED: list might be better as an MVector (actually big vector, so actually not?)
+                x = sg.state_list_static[ind_s]
                 
                 # store previous value
                 v_kn1 = value_array[ind_s]

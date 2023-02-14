@@ -1,8 +1,16 @@
 # planner.jl
 
+using Random
+
+# rng = MT(6) for left of obstacle
+# rng = MT(8) for more variance on approx policy
+# rng = MT(25) sends approx around top obstacle
+
 # main function to generate a path from an initial state to goal
 function plan_path(x_0, policy::Function, safe_value_lim, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, env, veh, sg, max_plan_steps)
     val_0 = interp_value(x_0, value_array, sg)
+
+    Dv_RC_hist = rand(MersenneTwister(35), [-0.5, 0.0, 0.5], max_plan_steps)
     
     x_path = []
     x_subpath = []  
@@ -17,7 +25,7 @@ function plan_path(x_0, policy::Function, safe_value_lim, get_actions::Function,
    
     for plan_step in 1:max_plan_steps
         # calculate rollout action
-        Dv_RC = rand([-0.5, 0.0, 0.5])
+        Dv_RC = Dv_RC_hist[plan_step]
         a_k, qval_array = policy(x_k, Dv_RC, safe_value_lim, get_actions, get_reward, Dt, q_value_array, value_array, veh, sg)
 
         # simulate forward one time step
@@ -55,26 +63,26 @@ function HJB_policy(x_k, Dv_RC, safe_value_lim, get_actions::Function, get_rewar
 
     # check for trough point
     if x_k[4] == 0.0 && actions[ia_HJB][2] == 0.0
-        # take best Dv=+0.5 action
-        ia_Dv_pos_set = findall(a -> a[2] > 0.0, actions)
-        ia_HJB = argmax(ia -> qval_x_HJB_array[ia], ia_Dv_pos_set)
+        # take best action with Dv=+0.5
+        ia_Dv_fix_set = findall(a -> a[2] > 0.0, actions)
+        ia_HJB = argmax(ia -> qval_x_HJB_array[ia], ia_Dv_fix_set)
+
+        a_ro = actions[ia_HJB]
+        return a_ro, qval_x_HJB_array
+
+    elseif x_k[4] == 0.5 && actions[ia_HJB][2] == -0.5
+        # take best action with Dv=0.0 or Dv=+0.5
+        ia_Dv_fix_set = findall(a -> a[2] >= 0.0, actions)
+        ia_HJB = argmax(ia -> qval_x_HJB_array[ia], ia_Dv_fix_set)
+
+        a_ro = actions[ia_HJB]
+        return a_ro, qval_x_HJB_array
+
+    else
+        a_ro = actions[ia_HJB]
+        return a_ro, qval_x_HJB_array
     end
-
-    a_ro = actions[ia_HJB]
-
-    return a_ro, qval_x_HJB_array
 end
-
-#=
-println("state in trough")
-println("ia_Dv_pos_set = ", ia_Dv_pos_set)
-println("new ia_HJB = ", ia_HJB)
-
-println("Q-values = ")
-for q in qval_x_HJB_array
-    println(q)
-end
-=#
 
 function approx_HJB_policy(x_k, Dv_RC, safe_value_lim, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
     actions, ia_set = get_actions(x_k, Dt, veh)
@@ -126,12 +134,52 @@ function reactive_policy(x_k, Dv_RC, safe_value_lim, get_actions::Function, get_
     end
 
     # B) if RC action is not valid, then find pure HJB best action ---
-    qval_x_HJB_array, val_x_HJB, ia_HJB = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
+    qval_x_HJB_array, _, ia_HJB = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
 
     a_ro = actions[ia_HJB]
 
     return a_ro, qval_x_HJB_array
 end
+
+# ISSUE: need to add q_val return for this function
+function approx_reactive_policy(x_k, Dv_RC, safe_value_lim, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
+    # get actions for current state
+    actions, ia_set = get_actions(x_k, Dt, veh)
+
+    # A) get near-optimal RC action from nearest neighbor ---
+    # limit action set based on reactive controllers
+    ia_RC_set = findall(a -> a[2] == Dv_RC, actions)
+    
+    # find nearest neighbor in state grid
+    ind_s_nbrs, weights_nbrs = interpolants(sg.state_grid, x_k)
+    ind_s_NN = ind_s_nbrs[findmax(weights_nbrs)[2]]
+
+    # minimize Q-value over RC limited action set to find best action
+    qval_x_NN_array = q_value_array[ind_s_NN]
+    ia_NN_RC = argmax(ia -> qval_x_NN_array[ia], ia_RC_set)
+
+    # check if ia_NN_RC is a valid action
+    x_p, _ = propagate_state(x_k, actions[ia_NN_RC], Dt, veh)
+    val_NN_RC = interp_value(x_p, value_array, sg)
+
+    # println("val_NN_RC_best = ", val_NN_RC_best)
+
+    if val_NN_RC >= safe_value_lim
+        a_ro = actions[ia_NN_RC]
+
+        return a_ro, qval_x_NN_array
+    end
+
+    # println("taking HJB action")
+
+    # B) if NN RC action is not valid, then find pure HJB best action ---
+    qval_x_HJB_array, _, ia_HJB = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
+
+    a_ro = actions[ia_HJB]
+    
+    return a_ro, qval_x_HJB_array
+end
+
 
 # approx reactive HJB_policy
 #   - need to store RC best action for each possible Dv input {-, 0, +}
@@ -164,42 +212,3 @@ end
 #       - however, minimum RC Q-value at neighboring nodes is true best case performance under RC constraint, should be able to use this if needed
 
 #   - MAIN IDEA: instead of perfoming Q-value optimization at exact state, choose minimum from stored Q-values at neighboring nodes
-
-
-function approx_reactive_policy(x_k, Dv_RC, safe_value_lim, get_actions::Function, get_reward::Function, Dt, q_value_array, value_array, veh, sg)
-    # get actions for current state
-    actions, ia_set = get_actions(x_k, Dt, veh)
-
-    # A) get near-optimal RC action from nearest neighbor ---
-    # limit action set based on reactive controllers
-    ia_RC_set = findall(a -> a[2] == Dv_RC, actions)
-    
-    # find nearest neighbor in state grid
-    ind_s_nbrs, weights_nbrs = interpolants(sg.state_grid, x_k)
-    ind_s_NN = ind_s_nbrs[findmax(weights_nbrs)[2]]
-
-    # minimize Q-value over RC limited action set to find best action
-    qvals_NN = q_value_array[ind_s_NN]
-    ia_NN_RC_best = argmax(ia -> qvals_NN[ia], ia_RC_set)
-
-    # check if ia_NN_RC_best is a valid action
-    x_p, _ = propagate_state(x_k, actions[ia_NN_RC_best], Dt, veh)
-    val_NN_RC_best = interp_value(x_p, value_array, sg)
-
-    # println("val_NN_RC_best = ", val_NN_RC_best)
-
-    if val_NN_RC_best >= safe_value_lim
-        a_ro = actions[ia_NN_RC_best]
-
-        return a_ro
-    end
-
-    # println("taking HJB action")
-
-    # B) if NN RC action is not valid, then find pure HJB best action ---
-    _, _, ia_HJB = optimize_action(x_k, ia_set, actions, get_reward, Dt, value_array, veh, sg)
-
-    a_ro = actions[ia_HJB]
-    
-    return a_ro
-end
