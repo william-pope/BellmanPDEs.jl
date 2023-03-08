@@ -142,20 +142,60 @@ function multi2single_ind(ind_m, sg)
     return ind_s
 end
 
-# NOTE: LazySets functions used here
+# NOTE: functions with LazySets ---
+# - to compute intersections without LazySets shapes, need numeric position/size of workspace, goal, obstacle, vehicle
+#   - these are currently not passed into functions, since they're used to define LS shapes
+#   - should be able to extract values from LS shapes, but requires interacting with them
+#       - still avoids expensive set operations, so think it's fine
+#   - otherwise would have to rewrite a fair amount of code to pass numeric values
+#       - probably not that hard tbh, but try simpler method first
 
+# checking with radial distances
+# - for vehicle, need to find centerpoint for current state, use stored circumscription radius
+#   - current functions take in x and veh, need to convert to centerpoint and raius within
+
+# ---
 # workspace checker
 function in_workspace(x, env, veh)
     # veh_body = state_to_body(x, veh)
     veh_body = state_to_body_circle(x, veh)
 
-    if issubset(veh_body, env.workspace)
+    if issubset(veh_body, env.workspace)        # (!): LazySets
         return true
     end
 
     return false
 end
 
+# NEW
+function in_workspace_SG(x, env, veh)
+    # calculate centerpoint of vehicle body rectangle
+    xp_c, yp_c = state_to_centerpoint_SG(x, veh)
+
+    # extract dimensions of workspace rectangle
+    x_coords = [vertex[1] for vertex in env.workspace.vertices]
+    ws_x_max = maximum(x_coords)
+    ws_x_min = minimum(x_coords)
+
+    y_coords = [vertex[2] for vertex in env.workspace.vertices]
+    ws_y_max = maximum(y_coords)
+    ws_y_min = minimum(y_coords)
+
+    # test if circle intersects workspace boundary
+    if xp_c + veh.radius_vb > ws_x_max
+        return false
+    elseif xp_c - veh.radius_vb < ws_x_min
+        return false
+    elseif yp_c + veh.radius_vb > ws_y_max
+        return false
+    elseif yp_c - veh.radius_vb < ws_y_min
+        return false
+    else 
+        return true
+    end
+end
+
+# ---
 # obstacle set checker
 function in_obstacle_set(x, env, veh)
     # veh_body = state_to_body(x, veh)
@@ -166,7 +206,7 @@ function in_obstacle_set(x, env, veh)
         #     return true
         # end
 
-        if isdisjoint(veh_body, obstacle) == false
+        if isdisjoint(veh_body, obstacle) == false      # (!): LazySets
             return true
         end
     end
@@ -174,12 +214,34 @@ function in_obstacle_set(x, env, veh)
     return false
 end
 
+# NEW
+function in_obstacle_set_SG(x, env, veh)
+    # calculate centerpoint of vehicle body rectangle
+    xp_c, yp_c = state_to_centerpoint_SG(x, veh)
+
+    # check distance to each obstacle
+    for obstacle_SG in env.obstacle_list_SG
+        # get (centerpoint, radius) of obstacle
+        xo_c = obstacle_SG[1]
+        yo_c = obstacle_SG[2]
+        radius_o = obstacle_SG[3]
+
+        dist_vo = sqrt((xp_c - xo_c)^2 + (yp_c - yo_c)^2)
+        if dist_vo < (radius_o + veh.radius_vb)
+            return true
+        end
+    end
+
+    return false
+end
+
+# ---
 # target set checker
 function in_target_set(x, env, veh)
     # state only inside goal region
     x_pos = Singleton(x[1:2])
 
-    if issubset(x_pos, env.goal)
+    if issubset(x_pos, env.goal)        # (!): LazySets
         return true
     end
 
@@ -192,6 +254,33 @@ function in_target_set(x, env, veh)
 
     return false
 end
+
+# NEW
+function in_target_set_SG(x, env, veh)
+    # calculate centerpoint of vehicle body rectangle
+    xp_c, yp_c = state_to_centerpoint_SG(x, veh)
+    println("[$xp_c, $yp_c]")
+    println(veh.radius_vb)
+
+    # check distance to goal
+    xg_c = env.goal_SG[1]
+    yg_c = env.goal_SG[2]
+    radius_g = env.goal_SG[3]
+
+    dist_vg = sqrt((xp_c - xg_c)^2 + (yp_c - yg_c)^2)
+    println(dist_vg)
+
+    if dist_vg < (radius_g) # (?): should vehicle radius be included here?
+        println("[$xg_c, $yg_c]")
+        println(radius_g)
+
+        return true
+    end
+
+    return false
+end
+
+# ---
 
 # vehicle body transformation function
 function state_to_body(x, veh)
@@ -217,6 +306,16 @@ function state_to_body_circle(x, veh)
     body_circle = VPolyCircle([xp_c, yp_c], veh.radius_vb)
 
     return body_circle
+end
+
+# NEW
+function state_to_centerpoint_SG(x, veh)
+    d = veh.origin_to_cent[1]
+
+    xp_c = x[1] + d * cos(x[3])
+    yp_c = x[2] + d * sin(x[3])
+
+    return xp_c, yp_c
 end
 
 # used to create circles as polygons in LazySets.jl

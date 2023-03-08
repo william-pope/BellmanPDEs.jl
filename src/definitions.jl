@@ -3,7 +3,9 @@
 struct Environment
     workspace::VPolygon
     obstacle_list::Array{VPolygon}
+    obstacle_list_SG::Array{Array{Float64}}
     goal::VPolygon
+    goal_SG::Array{Float64}
 end
 
 struct VehicleBody
@@ -24,8 +26,8 @@ struct StateGrid
 end
 
 # defines environment geometry
-function define_environment(workspace, obstacle_list, goal)
-    env = Environment(workspace, obstacle_list, goal)
+function define_environment(workspace, obstacle_list, obstacle_list_SG, goal, goal_SG)
+    env = Environment(workspace, obstacle_list, obstacle_list_SG, goal, goal_SG)
     return env
 end
 

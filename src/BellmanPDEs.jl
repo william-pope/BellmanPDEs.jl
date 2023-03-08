@@ -11,7 +11,8 @@ export VPolygon, VPolyCircle, SVector, SArray, Environment, VehicleBody, StateGr
     solve_HJB_PDE, plan_path, 
     interp_value, in_target_set, in_obstacle_set, in_workspace,
     HJB_policy, approx_HJB_policy, reactive_policy, approx_reactive_policy,
-    plot_HJB_value, plot_HJB_path, plot_path_value, state_to_body, state_to_body_circle
+    plot_HJB_value, plot_HJB_path, plot_path_value, state_to_body, state_to_body_circle,
+    in_workspace_SG, in_obstacle_set_SG, in_target_set_SG
 
 export discrete_time_EoM, propagate_state, interp_value, interpolate, optimize_action
 

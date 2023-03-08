@@ -56,7 +56,6 @@ function solve_HJB_PDE(get_actions::Function, get_reward::Function, Dt, env, veh
     return q_value_array, value_array
 end
 
-# ISSUE: seems like q_value_array is not being updated properly
 function update_node_value(x, get_actions::Function, get_reward::Function, Dt, value_array, veh, sg) 
     # using entire action set
     actions, ia_set = get_actions(x, Dt, veh)
