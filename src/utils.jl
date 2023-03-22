@@ -167,7 +167,7 @@ function in_workspace(x, env, veh)
     return false
 end
 
-# NEW
+# NEW (1/3)
 function in_workspace_SG(x, env, veh)
     # calculate centerpoint of vehicle body rectangle
     xp_c, yp_c = state_to_centerpoint_SG(x, veh)
@@ -214,7 +214,7 @@ function in_obstacle_set(x, env, veh)
     return false
 end
 
-# NEW
+# NEW (2/3)
 function in_obstacle_set_SG(x, env, veh)
     # calculate centerpoint of vehicle body rectangle
     xp_c, yp_c = state_to_centerpoint_SG(x, veh)
@@ -255,12 +255,10 @@ function in_target_set(x, env, veh)
     return false
 end
 
-# NEW
+# NEW (3/3)
 function in_target_set_SG(x, env, veh)
     # calculate centerpoint of vehicle body rectangle
     xp_c, yp_c = state_to_centerpoint_SG(x, veh)
-    println("[$xp_c, $yp_c]")
-    println(veh.radius_vb)
 
     # check distance to goal
     xg_c = env.goal_SG[1]
@@ -268,12 +266,8 @@ function in_target_set_SG(x, env, veh)
     radius_g = env.goal_SG[3]
 
     dist_vg = sqrt((xp_c - xg_c)^2 + (yp_c - yg_c)^2)
-    println(dist_vg)
 
-    if dist_vg < (radius_g) # (?): should vehicle radius be included here?
-        println("[$xg_c, $yg_c]")
-        println(radius_g)
-
+    if dist_vg < (radius_g) # (?): should vehicle radius be included here? probably not
         return true
     end
 

@@ -83,12 +83,12 @@ function initialize_value_array(Dt, get_actions::Function, sg, env, veh)
         ind_s = multi2single_ind(ind_m, sg)
         x = sg.state_list_static[ind_s]
 
-        if in_workspace(x, env, veh) == false || in_obstacle_set(x, env, veh) == true
+        if in_workspace_SG(x, env, veh) == false || in_obstacle_set_SG(x, env, veh) == true
             q_value_array[ind_s] = -1e6 * ones(length(ia_set))
             value_array[ind_s] = -1e6
             set_array[ind_s] = 0
         
-        elseif in_target_set(x, env, veh) == true
+        elseif in_target_set_SG(x, env, veh) == true
             q_value_array[ind_s] = 1000.0 * ones(length(ia_set))
             value_array[ind_s] = 1000.0
             set_array[ind_s] = 1
